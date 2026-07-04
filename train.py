@@ -212,7 +212,8 @@ def training(
         channel, height, width = image.shape
         image_masked = image[0, :height, :]
         render_image_show = image_masked.reshape(1, 90, 360).cuda()
-        tb_writer.add_image("render-img", render_image_show, iteration)
+        if tb_writer:
+            tb_writer.add_image("render-img", render_image_show, iteration)
         # image = image[0,:height, :]
         pred_spectrum_real = image[0, :height, :]
         pred_spectrum_imag = image[1, :height, :]
@@ -258,11 +259,11 @@ def training(
                 progress_bar.close()
 
             # Log and save
-
-            tb_writer.add_scalar("train_loss", loss.item(), iteration)
-            tb_writer.add_scalar(
-                "total_points", scene.gaussians.get_xyz.shape[0], iteration
-            )
+            if tb_writer:
+                tb_writer.add_scalar("train_loss", loss.item(), iteration)
+                tb_writer.add_scalar(
+                    "total_points", scene.gaussians.get_xyz.shape[0], iteration
+                )
 
             # training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background, 1., SPARSE_ADAM_AVAILABLE, None, dataset.train_test_exp), dataset.train_test_exp)
             if iteration in saving_iterations:
