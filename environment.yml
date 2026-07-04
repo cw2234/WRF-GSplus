@@ -2,9 +2,14 @@ name: wrfgsplus
 channels:
   - pytorch
   - conda-forge
+  - nvidia
   - defaults
 dependencies:
   - cudatoolkit=11.6
+  - cuda-nvcc=11.6
+  - cuda-cudart-dev=11.6
+  - gcc_linux-64=11
+  - gxx_linux-64=11
   - plyfile
   - python=3.8.20
   - pip=24.2
