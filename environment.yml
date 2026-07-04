@@ -24,6 +24,7 @@ dependencies:
   - pandas
   - scipy
   - scikit-image
+  - pyyaml
   - pip:
     - submodules/diff-gaussian-rasterization
     - submodules/simple-knn
