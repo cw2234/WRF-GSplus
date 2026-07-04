@@ -9,12 +9,12 @@ def get_embedder(multires, i=1):
         return nn.Identity(), 3
 
     embed_kwargs = {
-        'include_input': True,
-        'input_dims': i,
-        'max_freq_log2': multires - 1,
-        'num_freqs': multires,
-        'log_sampling': True,
-        'periodic_fns': [torch.sin, torch.cos],
+        "include_input": True,
+        "input_dims": i,
+        "max_freq_log2": multires - 1,
+        "num_freqs": multires,
+        "log_sampling": True,
+        "periodic_fns": [torch.sin, torch.cos],
     }
 
     embedder_obj = Embedder(**embed_kwargs)
@@ -29,22 +29,22 @@ class Embedder:
 
     def create_embedding_fn(self):
         embed_fns = []
-        d = self.kwargs['input_dims']
+        d = self.kwargs["input_dims"]
         out_dim = 0
-        if self.kwargs['include_input']:
+        if self.kwargs["include_input"]:
             embed_fns.append(lambda x: x)
             out_dim += d
 
-        max_freq = self.kwargs['max_freq_log2']
-        N_freqs = self.kwargs['num_freqs']
+        max_freq = self.kwargs["max_freq_log2"]
+        N_freqs = self.kwargs["num_freqs"]
 
-        if self.kwargs['log_sampling']:
-            freq_bands = 2. ** torch.linspace(0., max_freq, steps=N_freqs)
+        if self.kwargs["log_sampling"]:
+            freq_bands = 2.0 ** torch.linspace(0.0, max_freq, steps=N_freqs)
         else:
-            freq_bands = torch.linspace(2. ** 0., 2. ** max_freq, steps=N_freqs)
+            freq_bands = torch.linspace(2.0**0.0, 2.0**max_freq, steps=N_freqs)
 
         for freq in freq_bands:
-            for p_fn in self.kwargs['periodic_fns']:
+            for p_fn in self.kwargs["periodic_fns"]:
                 embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
                 out_dim += d
 
@@ -56,7 +56,16 @@ class Embedder:
 
 
 class DeformNetwork(nn.Module):
-    def __init__(self, D=8, W=256, input_ch=3, output_ch=59, multires=10, is_blender=True, is_6dof=False):
+    def __init__(
+        self,
+        D=8,
+        W=256,
+        input_ch=3,
+        output_ch=59,
+        multires=10,
+        is_blender=True,
+        is_6dof=False,
+    ):
         super(DeformNetwork, self).__init__()
         self.D = D
         self.W = W
@@ -70,24 +79,33 @@ class DeformNetwork(nn.Module):
         self.input_ch = xyz_input_ch + pos_input_ch
 
         if is_blender:
-           
             self.pos_out = 90
 
             self.posnet = nn.Sequential(
-                nn.Linear(pos_input_ch, 256), nn.ReLU(inplace=True),
-                nn.Linear(256, self.pos_out))
+                nn.Linear(pos_input_ch, 256),
+                nn.ReLU(inplace=True),
+                nn.Linear(256, self.pos_out),
+            )
 
             self.linear = nn.ModuleList(
-                [nn.Linear(xyz_input_ch + self.pos_out, W)] + [
-                    nn.Linear(W, W) if i not in self.skips else nn.Linear(W + xyz_input_ch + self.pos_out, W)
-                    for i in range(D - 1)]
+                [nn.Linear(xyz_input_ch + self.pos_out, W)]
+                + [
+                    nn.Linear(W, W)
+                    if i not in self.skips
+                    else nn.Linear(W + xyz_input_ch + self.pos_out, W)
+                    for i in range(D - 1)
+                ]
             )
 
         else:
             self.linear = nn.ModuleList(
-                [nn.Linear(self.input_ch, W)] + [
-                    nn.Linear(W, W) if i not in self.skips else nn.Linear(W + self.input_ch, W)
-                    for i in range(D - 1)]
+                [nn.Linear(self.input_ch, W)]
+                + [
+                    nn.Linear(W, W)
+                    if i not in self.skips
+                    else nn.Linear(W + self.input_ch, W)
+                    for i in range(D - 1)
+                ]
             )
 
         self.is_blender = is_blender
@@ -100,7 +118,7 @@ class DeformNetwork(nn.Module):
             self.gaussian_warp = nn.Linear(W, 3)
         self.gaussian_rotation = nn.Linear(W, 4)
         self.gaussian_scaling = nn.Linear(W, 3)
-        self.gaussian_signal = nn.Linear(W,3)
+        self.gaussian_signal = nn.Linear(W, 3)
         self.gaussian_phase = nn.Linear(W, 3)
 
     def forward(self, x, t):
@@ -108,8 +126,7 @@ class DeformNetwork(nn.Module):
         if self.is_blender:
             t_emb = self.posnet(t_emb)  # better for D-NeRF Dataset
         x_emb = self.embed_fn(x)
-        
-        
+
         h = torch.cat([x_emb, t_emb], dim=-1)
         for i, l in enumerate(self.linear):
             h = self.linear[i](h)
@@ -131,7 +148,7 @@ class DeformNetwork(nn.Module):
         rotation = self.gaussian_rotation(h)
         signal_real = self.gaussian_signal(h)
         signal_img = self.gaussian_phase(h)
-        signal_complex = signal_real*torch.exp(1j*signal_img)
+        signal_complex = signal_real * torch.exp(1j * signal_img)
         signal = torch.abs(signal_complex)
 
         return d_xyz, rotation, scaling, signal

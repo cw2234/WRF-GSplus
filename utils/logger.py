@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
-"""global logger config
-"""
+"""global logger config"""
+
 import logging
+
 
 class SpecificLogFilter(logging.Filter):
     def filter(self, record):
         # Only log messages containing 'specific' in the message
-        return 'timestamp' in record.getMessage()
+        return "timestamp" in record.getMessage()
 
 
-def logger_config(log_savepath,logging_name):
-    '''logger config
-    '''
+def logger_config(log_savepath, logging_name):
+    """logger config"""
     # get logger name
     logger = logging.getLogger(logging_name)
     logger.setLevel(level=logging.DEBUG)
 
     # get file handler and set level
-    file_handler = logging.FileHandler(log_savepath, encoding='UTF-8')
+    file_handler = logging.FileHandler(log_savepath, encoding="UTF-8")
     file_handler.setLevel(logging.DEBUG)
 
     # Add the filter to the handler
@@ -25,7 +25,9 @@ def logger_config(log_savepath,logging_name):
     # file_handler.addFilter(log_filter)
 
     # format the file handler
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     # formatter = logging.Formatter('%(message)s')
     file_handler.setFormatter(formatter)
 
@@ -37,5 +39,3 @@ def logger_config(log_savepath,logging_name):
     logger.addHandler(file_handler)
     logger.addHandler(console)
     return logger
-
-
