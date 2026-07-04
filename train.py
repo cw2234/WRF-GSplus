@@ -14,7 +14,7 @@ import torch
 import numpy as np
 from random import randint
 from utils.loss_utils import l1_loss, ssim
-from gaussian_renderer import render, network_gui
+from gaussian_renderer import render
 import sys
 from scene import Scene, GaussianModel, DeformModel
 from utils.general_utils import safe_state, get_expon_lr_func
@@ -54,7 +54,7 @@ from skimage.metrics import structural_similarity as ssim
 
 def training(
     dataset,
-    opt,
+    opt: OptimizationParams,
     pipe,
     testing_iterations,
     saving_iterations,
@@ -79,7 +79,7 @@ def training(
     logger.info("datadir:%s, logdir:%s", datadir, logdir)
 
     first_iter = 0
-    tb_writer = prepare_output_and_logger(dataset, current_time)
+    tb_writer = prepare_output_and_logger(dataset, "0")
     gaussians = GaussianModel(dataset.sh_degree, opt.optimizer_type)
     gaussians.gaussian_init()
     deform = DeformModel()
@@ -111,45 +111,6 @@ def training(
     progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
     first_iter += 1
     for iteration in range(first_iter, opt.iterations + 1):
-        if network_gui.conn == None:
-            network_gui.try_connect()
-        while network_gui.conn != None:
-            try:
-                net_image_bytes = None
-                (
-                    custom_cam,
-                    do_training,
-                    pipe.convert_SHs_python,
-                    pipe.compute_cov3D_python,
-                    keep_alive,
-                    scaling_modifer,
-                ) = network_gui.receive()
-                if custom_cam != None:
-                    net_image = render(
-                        custom_cam,
-                        gaussians,
-                        pipe,
-                        background,
-                        scaling_modifier=scaling_modifer,
-                        use_trained_exp=dataset.train_test_exp,
-                        separate_sh=SPARSE_ADAM_AVAILABLE,
-                    )["render"]
-                    net_image_bytes = memoryview(
-                        (torch.clamp(net_image, min=0, max=1.0) * 255)
-                        .byte()
-                        .permute(1, 2, 0)
-                        .contiguous()
-                        .cpu()
-                        .numpy()
-                    )
-                network_gui.send(net_image_bytes, dataset.source_path)
-                if do_training and (
-                    (iteration < int(opt.iterations)) or not keep_alive
-                ):
-                    break
-            except Exception as e:
-                network_gui.conn = None
-
         iter_start.record()
 
         gaussians.update_learning_rate(iteration)
@@ -220,6 +181,7 @@ def training(
         pred_spectrum = pred_spectrum_real + 1j * pred_spectrum_imag
         pred_spectrum = torch.abs(pred_spectrum)
         image = pred_spectrum
+
 
         # Loss
         gt_image = spectrum.cuda()
@@ -525,7 +487,6 @@ if __name__ == "__main__":
         default=[7_000, 30_000, 60000, 200000, 300000, 600000, 1200000],
     )
     parser.add_argument("--quiet", action="store_true")
-    parser.add_argument("--disable_viewer", action="store_true", default=False)
     parser.add_argument(
         "--checkpoint_iterations",
         nargs="+",
@@ -545,9 +506,7 @@ if __name__ == "__main__":
     # Initialize system state (RNG)
     safe_state(args.quiet)
 
-    # Start GUI server, configure and run training
-    if not args.disable_viewer:
-        network_gui.init(args.ip, args.port)
+
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
     training(
         lp.extract(args),
